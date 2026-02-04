@@ -55,4 +55,3 @@ To create a skill based on this template:
 ## Resources
 
 - [Contributing Guide](../../docs/CONTRIBUTING.md)
-- [Skill Creator](../development/skill-creator/) - Advanced skill creation guide

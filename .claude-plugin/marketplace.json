@@ -1,7 +1,7 @@
 {
   "name": "lamtuanvu-marketplace",
   "version": "1.0.0",
-  "description": "Community skills for Claude Code - SpecKit, MCP tools, and more",
+  "description": "SpecKit workflow skills for Claude Code - structured feature development",
   "owner": {
     "name": "lamtuanvu",
     "github": "lamtuanvu"
@@ -24,52 +24,12 @@
       "description": "Brainstorm and plan features before SpecKit pipeline execution",
       "source": "./skills/development/speckit-brainstorm",
       "keywords": ["speckit", "planning", "brainstorming", "idea", "feature"]
-    },
-    {
-      "name": "skill-creator",
-      "version": "1.0.0",
-      "description": "Guide for creating effective Claude Code skills",
-      "source": "./skills/development/skill-creator",
-      "keywords": ["skills", "development", "creator", "template", "guide"]
-    },
-    {
-      "name": "mcp-builder",
-      "version": "1.0.0",
-      "description": "Build high-quality MCP servers for Claude Code",
-      "source": "./skills/integrations/mcp-builder",
-      "keywords": ["mcp", "server", "integration", "tools", "api"]
-    },
-    {
-      "name": "brand-guidelines",
-      "version": "1.0.0",
-      "description": "Apply Anthropic brand colors and typography",
-      "source": "./skills/documentation/brand-guidelines",
-      "keywords": ["brand", "design", "anthropic", "styling", "typography"]
-    },
-    {
-      "name": "agent-manager-skill",
-      "version": "1.0.0",
-      "description": "Manage multiple local CLI agents via tmux sessions",
-      "source": "./skills/automation/agent-manager-skill",
-      "keywords": ["agents", "tmux", "automation", "management", "cli"]
     }
   ],
   "categories": [
     {
       "name": "development",
       "description": "Development workflows and tools"
-    },
-    {
-      "name": "integrations",
-      "description": "API and service integrations"
-    },
-    {
-      "name": "documentation",
-      "description": "Documentation and styling"
-    },
-    {
-      "name": "automation",
-      "description": "Task automation and workflows"
     }
   ]
 }
