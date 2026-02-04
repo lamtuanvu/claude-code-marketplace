@@ -1,0 +1,127 @@
+name: Validate Skills
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml jsonschema
+
+      - name: Validate marketplace.json
+        run: |
+          python -c "
+          import json
+          import sys
+
+          with open('.claude-plugin/marketplace.json') as f:
+              data = json.load(f)
+
+          required_root = ['name', 'version', 'plugins']
+          for field in required_root:
+              if field not in data:
+                  print(f'Missing required field: {field}')
+                  sys.exit(1)
+
+          for plugin in data['plugins']:
+              required_plugin = ['name', 'version', 'description', 'source', 'keywords']
+              for field in required_plugin:
+                  if field not in plugin:
+                      print(f\"Plugin {plugin.get('name', 'unknown')} missing field: {field}\")
+                      sys.exit(1)
+
+          print(f\"Validated {len(data['plugins'])} plugins\")
+          "
+
+      - name: Validate SKILL.md files
+        run: |
+          python -c "
+          import os
+          import yaml
+          import sys
+
+          skills_dir = 'skills'
+          errors = []
+          validated = 0
+
+          for root, dirs, files in os.walk(skills_dir):
+              if 'SKILL.md' in files:
+                  skill_path = os.path.join(root, 'SKILL.md')
+                  with open(skill_path) as f:
+                      content = f.read()
+
+                  # Check for frontmatter
+                  if not content.startswith('---'):
+                      errors.append(f'{skill_path}: Missing YAML frontmatter')
+                      continue
+
+                  # Extract frontmatter
+                  parts = content.split('---', 2)
+                  if len(parts) < 3:
+                      errors.append(f'{skill_path}: Invalid frontmatter format')
+                      continue
+
+                  try:
+                      frontmatter = yaml.safe_load(parts[1])
+                  except yaml.YAMLError as e:
+                      errors.append(f'{skill_path}: Invalid YAML: {e}')
+                      continue
+
+                  # Check required fields
+                  if 'name' not in frontmatter:
+                      errors.append(f'{skill_path}: Missing required field: name')
+                  if 'description' not in frontmatter:
+                      errors.append(f'{skill_path}: Missing required field: description')
+
+                  validated += 1
+
+          if errors:
+              for error in errors:
+                  print(f'ERROR: {error}')
+              sys.exit(1)
+
+          print(f'Validated {validated} skill files')
+          "
+
+      - name: Check skill sources exist
+        run: |
+          python -c "
+          import json
+          import os
+          import sys
+
+          with open('.claude-plugin/marketplace.json') as f:
+              data = json.load(f)
+
+          errors = []
+          for plugin in data['plugins']:
+              source = plugin['source']
+              # Convert ./skills/... to skills/...
+              if source.startswith('./'):
+                  source = source[2:]
+
+              skill_md = os.path.join(source, 'SKILL.md')
+              if not os.path.exists(skill_md):
+                  errors.append(f\"Plugin {plugin['name']}: SKILL.md not found at {skill_md}\")
+
+          if errors:
+              for error in errors:
+                  print(f'ERROR: {error}')
+              sys.exit(1)
+
+          print('All plugin sources validated')
+          "
