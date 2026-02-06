@@ -1,10 +1,10 @@
 # Claude Code Skills Marketplace
 
-[![Skills](https://img.shields.io/badge/skills-2-blue)](skills/)
+[![Skills](https://img.shields.io/badge/skills-3-blue)](skills/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](docs/CONTRIBUTING.md)
 
-SpecKit workflow skills for Claude Code - structured feature development from idea to implementation.
+Skills for Claude Code - structured feature development and plugin creation tools.
 
 ## Quick Start
 
@@ -18,6 +18,7 @@ SpecKit workflow skills for Claude Code - structured feature development from id
 # Install individual skill
 /plugin install speckit-orchestrator@lamtuanvu-marketplace
 /plugin install speckit-brainstorm@lamtuanvu-marketplace
+/plugin install plugin-creator@lamtuanvu-marketplace
 
 # Or install all skills
 /plugin install-all lamtuanvu-marketplace
@@ -27,9 +28,26 @@ SpecKit workflow skills for Claude Code - structured feature development from id
 ```
 /speckit-brainstorm Add dark mode toggle
 /speckit-orchestrator --execute
+/plugin-creator
 ```
 
-## SpecKit Workflow
+## Available Skills
+
+### Plugin Creator
+
+Create and develop Claude Code plugins with incremental component addition.
+
+```bash
+/plugin-creator
+```
+
+Features:
+- Initialize new plugins with proper manifest structure
+- Add skills, agents, commands, hooks, MCP servers, LSP servers
+- Validate plugin structure
+- Package for distribution
+
+### SpecKit Workflow
 
 SpecKit is a structured feature development workflow:
 
@@ -39,6 +57,7 @@ brainstorm → specify → clarify → plan → tasks → analyze → implement
 
 | Skill | Description |
 |-------|-------------|
+| [plugin-creator](skills/development/plugin-creator) | Create and develop Claude Code plugins incrementally |
 | [speckit-brainstorm](skills/development/speckit-brainstorm) | Start here - explore ideas, define requirements, produce idea.md |
 | [speckit-orchestrator](skills/development/speckit-orchestrator) | Execute the pipeline one step at a time |
 
@@ -59,6 +78,10 @@ brainstorm → specify → clarify → plan → tasks → analyze → implement
 ```
 skills/
 └── development/
+    ├── plugin-creator/
+    │   ├── SKILL.md
+    │   ├── scripts/
+    │   └── references/
     ├── speckit-brainstorm/
     │   ├── SKILL.md
     │   ├── scripts/
