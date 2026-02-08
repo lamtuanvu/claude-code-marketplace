@@ -186,6 +186,38 @@ def print_progress(state: OrchestratorState) -> None:
 
 
 # ============================================================================
+# PIPELINE PAUSE HELPERS
+# ============================================================================
+
+def _clear_paused_flag(state_file: str) -> None:
+    """Clear pipeline_paused flag from state file."""
+    try:
+        with open(state_file, 'r') as f:
+            data = json.load(f)
+        if data.get('pipeline_paused'):
+            data['pipeline_paused'] = False
+            data['last_updated'] = datetime.utcnow().isoformat() + "Z"
+            with open(state_file, 'w') as f:
+                json.dump(data, f, indent=2)
+    except (json.JSONDecodeError, FileNotFoundError):
+        pass
+
+
+def _set_paused_flag(state_file: str) -> None:
+    """Set pipeline_paused flag in state file."""
+    try:
+        with open(state_file, 'r') as f:
+            data = json.load(f)
+        data['pipeline_paused'] = True
+        data['last_updated'] = datetime.utcnow().isoformat() + "Z"
+        with open(state_file, 'w') as f:
+            json.dump(data, f, indent=2)
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        print(f"Error: Could not update state file: {e}")
+        sys.exit(1)
+
+
+# ============================================================================
 # COMMANDS
 # ============================================================================
 
@@ -258,6 +290,9 @@ def cmd_execute(args):
     print(f"\n" + "=" * 70)
     print(f"RUN: /speckit.{next_step.value}")
     print("=" * 70)
+    # Clear pipeline_paused flag on execute so the stop hook resumes auto-continuation
+    _clear_paused_flag(state_file)
+
     print(f"""
 CONTEXT TO PASS:
 
@@ -273,7 +308,7 @@ AFTER COMPLETION:
 
 2. Display completion message
 
-3. STOP AND WAIT for user to re-run --execute
+The stop hook will auto-continue to the next step.
 """)
     print("=" * 70)
 
@@ -341,6 +376,27 @@ def cmd_rollback(args):
     print_progress(state)
 
 
+def cmd_cancel(args):
+    """Pause pipeline so the stop hook allows exit."""
+    base_dir = os.getcwd()
+
+    state_file, feature = find_state_file(base_dir)
+    if not state_file:
+        print("Error: No state file found. Nothing to cancel.")
+        sys.exit(1)
+
+    _set_paused_flag(state_file)
+
+    state = OrchestratorState.load(state_file)
+    next_step = state.get_next_step()
+
+    print(f"⏸ Pipeline paused for feature: {feature}")
+    if next_step:
+        print(f"  Paused before step: {next_step.value}")
+    print(f"\nTo resume: /speckit-orchestrator --execute")
+    print_progress(state)
+
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -370,6 +426,10 @@ def main():
     rollback_p = subparsers.add_parser("rollback", help="Rollback to step")
     rollback_p.add_argument("step", help="Step to rollback to")
     rollback_p.set_defaults(func=cmd_rollback)
+
+    # Cancel (pause pipeline)
+    cancel_p = subparsers.add_parser("cancel", help="Pause pipeline")
+    cancel_p.set_defaults(func=cmd_cancel)
 
     args = parser.parse_args()
 

@@ -1,29 +1,22 @@
 {
   "name": "lamtuanvu-marketplace",
   "version": "1.0.0",
-  "description": "SpecKit workflow skills for Claude Code - structured feature development",
+  "description": "SpecKit workflow plugin for Claude Code - structured feature development",
   "owner": {
     "name": "lamtuanvu",
     "github": "lamtuanvu"
   },
   "metadata": {
     "version": "1.0.0",
-    "pluginRoot": "./skills"
+    "pluginRoot": "./plugins"
   },
   "plugins": [
     {
       "name": "speckit-orchestrator",
       "version": "1.0.0",
-      "description": "Execute the SpecKit pipeline (specify→clarify→plan→tasks→analyze→implement) one step at a time",
-      "source": "./skills/development/speckit-orchestrator",
-      "keywords": ["speckit", "workflow", "automation", "pipeline", "development"]
-    },
-    {
-      "name": "speckit-brainstorm",
-      "version": "1.0.0",
-      "description": "Brainstorm and plan features before SpecKit pipeline execution",
-      "source": "./skills/development/speckit-brainstorm",
-      "keywords": ["speckit", "planning", "brainstorming", "idea", "feature"]
+      "description": "SpecKit pipeline orchestrator — brainstorm, execute specify→clarify→plan→tasks→analyze→implement, auto-continue via stop hook",
+      "source": "./plugins/speckit-orchestrator",
+      "keywords": ["speckit", "workflow", "automation", "pipeline", "development", "brainstorm"]
     }
   ],
   "categories": [

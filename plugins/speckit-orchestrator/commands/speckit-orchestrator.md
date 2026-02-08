@@ -1,14 +1,13 @@
 ---
-name: speckit-orchestrator
-description: Execute the SpecKit pipeline (specify→clarify→plan→tasks→analyze→implement) for a feature. This skill assumes idea.md already exists and runs one pipeline step at a time, following idea.md as the source of truth. Use this after brainstorming is complete and idea.md has been created.
-argument-hint: --execute | --status | --rollback <phase>
+description: "Execute the SpecKit pipeline (specify->clarify->plan->tasks->analyze->implement) for a feature. Assumes idea.md exists. Use after brainstorming is complete."
+argument-hint: "--execute | --status | --rollback <phase>"
 ---
 
 # SpecKit Orchestrator
 
 ## Overview
 
-This skill executes the SpecKit pipeline for feature development:
+This command executes the SpecKit pipeline for feature development:
 
 ```
 specify → clarify → plan → tasks → analyze → implement
@@ -19,7 +18,7 @@ specify → clarify → plan → tasks → analyze → implement
 - `docs/features/<feature>/idea.md` exists with the approved plan
 - `docs/features/<feature>/orchestrator-state.json` exists
 
-**The orchestrator runs ONE step at a time**, requiring user to trigger each step.
+**The stop hook handles auto-continuation.** After each step, the hook reads `orchestrator-state.json` and feeds `/speckit-orchestrator --execute` to run the next step. It only allows stop when a step fails, the pipeline completes, or the pipeline is paused.
 
 ## When to Use
 
@@ -34,7 +33,7 @@ Use this when:
 
 ## Pipeline Steps
 
-Each `--execute` call runs ONE step, then STOPS:
+Each `--execute` call runs the next step. The stop hook auto-continues on success:
 
 | Step | Command | Purpose |
 |------|---------|---------|
@@ -63,10 +62,10 @@ Each `--execute` call runs ONE step, then STOPS:
    - Read `orchestrator-state.json` to find next pending step
    - Read `idea.md` for context
    - Run the appropriate `/speckit.*` command
-   - Update state
-   - **STOP and wait**
+   - **Update `step_status` to `"completed"` and advance `current_step`** (this is the signal the stop hook reads)
+   - **If step failed → STOP and wait for user**
 
-4. **Repeat step 2** until all steps complete
+4. The **stop hook** detects the completed step and auto-feeds `/speckit-orchestrator --execute` for the next step. Pipeline runs to completion unless a step fails.
 
 ### Context for Each Step
 
@@ -78,23 +77,48 @@ Do not add features beyond what idea.md specifies.
 All work must align with the approved plan.
 ```
 
-### After Each Step
+### After Each Step (Critical for Stop Hook)
 
-Display:
+**You MUST update `orchestrator-state.json` before finishing:**
+1. Set the current step's `step_status` to `"completed"`
+2. Set `current_step` to the next step name
+3. Update `last_updated` timestamp
+
+The stop hook reads these fields to decide whether to auto-continue.
+
+**On success**, display a brief status:
+```
+✅ specify — complete.
+```
+
+**On failure**, display the error and STOP:
 ```
 ══════════════════════════════════════════════════════════════
-✅ STEP COMPLETE: specify
+❌ STEP FAILED: clarify
 ══════════════════════════════════════════════════════════════
 
-Next step: clarify
+Error: <description of what went wrong>
 
-To continue, run:
+Fix the issue, then run:
   /speckit-orchestrator --execute
 
 ══════════════════════════════════════════════════════════════
 ```
 
-Then **STOP AND WAIT** for user.
+### After All Steps Complete
+
+Display:
+```
+══════════════════════════════════════════════════════════════
+✅ PIPELINE COMPLETE
+══════════════════════════════════════════════════════════════
+
+ [✓] Specify  →  [✓] Clarify  →  [✓] Plan
+ [✓] Tasks    →  [✓] Analyze  →  [✓] Implement
+
+Feature <feature-name> is fully implemented.
+══════════════════════════════════════════════════════════════
+```
 
 ## State Management
 
@@ -143,6 +167,7 @@ After each step completes:
 | `/speckit-orchestrator --execute` | Run next pipeline step |
 | `/speckit-orchestrator --status` | Show current progress |
 | `/speckit-orchestrator --rollback <step>` | Reset to a step |
+| `/speckit-orchestrator:cancel-pipeline` | Pause pipeline (stop hook allows exit) |
 
 ## Progress Display
 
@@ -161,16 +186,16 @@ After each step completes:
 
 ## Critical Rules
 
-### ⛔ ONE STEP AT A TIME
+### UPDATE STATE ON SUCCESS (Stop Hook Signal)
 
-**Each --execute runs ONLY ONE /speckit.* command, then STOPS.**
+**The stop hook reads `orchestrator-state.json` to decide auto-continuation. You MUST update state after each step.**
 
-- ❌ DO NOT run multiple /speckit.* commands
-- ❌ DO NOT skip steps
-- ❌ DO NOT auto-continue
-- ✅ Run ONE step, update state, STOP, wait for user
+- Step succeeded → set `step_status` to `"completed"`, advance `current_step`, then finish your turn
+- Step failed → output "STEP FAILED", leave state as-is, stop for user to fix
+- DO NOT skip steps
+- DO NOT continue past a failed step
 
-### 📋 FOLLOW idea.md
+### FOLLOW idea.md
 
 **All steps must follow idea.md strictly.**
 
@@ -192,45 +217,12 @@ If `orchestrator-state.json` doesn't exist but `idea.md` does:
    /speckit-orchestrator --execute
    ```
 
-## Example Session
-
-```
-User: /speckit-orchestrator --execute
-
-Claude: Reading state... Next step: specify
-        Reading idea.md for context...
-        Running /speckit.specify...
-        [spec.md created]
-        Updating state...
-
-        ══════════════════════════════════════════════════════════════
-        ✅ STEP COMPLETE: specify
-        Next step: clarify
-        To continue: /speckit-orchestrator --execute
-        ══════════════════════════════════════════════════════════════
-
-User: /speckit-orchestrator --execute
-
-Claude: Reading state... Next step: clarify
-        Running /speckit.clarify...
-        [clarifications applied or skipped]
-        Updating state...
-
-        ══════════════════════════════════════════════════════════════
-        ✅ STEP COMPLETE: clarify
-        Next step: plan
-        To continue: /speckit-orchestrator --execute
-        ══════════════════════════════════════════════════════════════
-
-... continues until implement is complete
-```
-
 ## Error Handling
 
 ### Missing idea.md
 ```
 Error: idea.md not found at docs/features/<feature>/idea.md
-Create idea.md first (use brainstorming skill or create manually)
+Create idea.md first (use /speckit-orchestrator:brainstorm or create manually)
 ```
 
 ### Missing state file

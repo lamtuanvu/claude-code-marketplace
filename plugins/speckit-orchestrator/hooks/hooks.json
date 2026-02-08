@@ -1,0 +1,15 @@
+{
+  "description": "SpecKit Orchestrator stop hook for automatic pipeline continuation",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

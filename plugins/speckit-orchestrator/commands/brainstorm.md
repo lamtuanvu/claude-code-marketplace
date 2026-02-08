@@ -1,22 +1,21 @@
 ---
-name: speckit-brainstorm
-description: Brainstorm and plan a new feature before SpecKit pipeline execution. This skill should be used when starting a new feature from scratch, helping users explore ideas, define requirements, and produce an approved idea.md file. After completion, use speckit-orchestrator to execute the pipeline.
-argument-hint: <feature-description>
+description: "Brainstorm and plan a new feature before SpecKit pipeline execution. Helps explore ideas, define requirements, and produce an approved idea.md file."
+argument-hint: "<feature-description>"
 ---
 
 # SpecKit Brainstorm
 
 ## Overview
 
-This skill facilitates feature brainstorming and planning. It guides the user through exploring their feature idea, defining requirements, and producing an approved `idea.md` file that serves as the source of truth for the subsequent SpecKit pipeline.
+This command facilitates feature brainstorming and planning. It guides the user through exploring their feature idea, defining requirements, and producing an approved `idea.md` file that serves as the source of truth for the subsequent SpecKit pipeline.
 
 **Output**: `docs/features/<feature>/idea.md` + `orchestrator-state.json` + git branch
 
-**Next Step**: After this skill completes, run `/speckit-orchestrator --execute` to start the pipeline.
+**Next Step**: If all 3 output steps succeed, automatically continue into `/speckit-orchestrator --execute` to start the pipeline. No manual handoff needed.
 
 ## When to Use
 
-Use this skill when:
+Use this command when:
 - Starting a new feature from scratch
 - User has a vague idea that needs refinement
 - User wants to explore requirements before implementation
@@ -71,68 +70,63 @@ If user provides feedback, iterate on the plan until approved.
 
 ### Step 4: Create Feature Artifacts
 
-After user approves the plan:
+After user approves the plan, **always execute these 3 steps in order**:
 
-1. **Extract Feature Information**
-   - Feature name (kebab-case): e.g., `dark-mode-toggle`
-   - Ticket number (if provided): e.g., `042`
-   - Branch name: `<ticket>-<feature-name>` or just `<feature-name>`
+**Extract feature info first:**
+- Feature name (kebab-case): e.g., `dark-mode-toggle`
+- Ticket number (if provided): e.g., `042`
+- Branch name: `<ticket>-<feature-name>` or just `<feature-name>`
 
-2. **Create Git Branch**
-   ```bash
-   git checkout -b <branch-name>
-   ```
+**Step 4.1: Create git branch**
+```bash
+git checkout -b <branch-name>
+```
 
-3. **Create Feature Directory**
-   ```bash
-   mkdir -p docs/features/<feature-name>
-   ```
+**Step 4.2: Create `docs/features/<feature>/idea.md`**
+- Create the directory: `mkdir -p docs/features/<feature-name>`
+- Write the approved plan as `docs/features/<feature-name>/idea.md`
+- Follow the SpecKit template from `references/idea-template.md`
 
-4. **Write idea.md**
-   - Location: `docs/features/<feature-name>/idea.md`
-   - Content: The approved plan from planning mode
-   - Use the template structure from `references/idea-template.md`
+**Step 4.3: Run `init_feature.py` to create `orchestrator-state.json`**
+```bash
+python scripts/init_feature.py <feature-name> <branch-name>
+```
 
-5. **Create orchestrator-state.json**
-   Run the initialization script:
-   ```bash
-   python scripts/init_feature.py <feature-name> <branch-name>
-   ```
+These 3 steps are the **mandatory output** of the brainstorming process. All 3 must complete successfully before proceeding.
 
-### Step 5: STOP and Provide Next Steps
+### Step 5: Report and Continue
 
-After creating all artifacts, display:
+After all 3 steps complete successfully, display:
 
 ```
 ══════════════════════════════════════════════════════════════
-✅ BRAINSTORMING COMPLETE
+BRAINSTORMING COMPLETE
 ══════════════════════════════════════════════════════════════
 
-Feature: <feature-name>
-Branch: <branch-name>
-Idea file: docs/features/<feature-name>/idea.md
+ 1. Created git branch: <branch-name>
+ 2. Created idea.md: docs/features/<feature-name>/idea.md
+ 3. Created orchestrator-state.json via init_feature.py
 
-To start the SpecKit pipeline, run:
-  /speckit-orchestrator --execute
-
+Continuing to SpecKit pipeline...
 ══════════════════════════════════════════════════════════════
 ```
 
-Then **STOP AND WAIT**. Do NOT automatically start the pipeline.
+Then **automatically invoke `/speckit-orchestrator --execute`** to begin the pipeline. No manual handoff needed.
+
+If any of the 3 steps **failed**, STOP, display the failure, and wait for the user to resolve it before continuing.
 
 ## Critical Rules
 
-### ⛔ STOP AFTER idea.md
+### AUTO-CONTINUE ON SUCCESS
 
-**After creating idea.md and orchestrator-state.json, STOP immediately.**
+**If all 3 output steps pass, automatically continue into the pipeline.**
 
-- ❌ DO NOT run /speckit.* commands
-- ❌ DO NOT start implementation
-- ❌ DO NOT auto-continue to pipeline
-- ✅ Display completion message
-- ✅ Wait for user to run /speckit-orchestrator
+- All 3 steps passed → invoke `/speckit-orchestrator --execute`
+- Any step failed → STOP, display failure, wait for user
+- DO NOT skip failed steps
+- DO NOT start implementation directly (always go through orchestrator)
 
-### 📋 Plan Must Be Approved
+### Plan Must Be Approved
 
 **Never write idea.md without user approval.**
 

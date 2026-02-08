@@ -2,7 +2,7 @@
 
 ## Overview
 
-The orchestrator executes the SpecKit pipeline **one step at a time**:
+The orchestrator executes the SpecKit pipeline **step by step, with a stop hook providing auto-continuation**:
 
 ```
 specify → clarify → plan → tasks → analyze → implement
@@ -167,19 +167,19 @@ python orchestrator.py rollback <step>
 
 ## Critical Rules
 
-### ⛔ ONE STEP AT A TIME
+### ✅ ONE STEP PER EXECUTE (Stop Hook Auto-Continues)
 
 Each `--execute` call:
 1. Reads state to find next pending step
 2. Reads idea.md for context
 3. Runs ONE /speckit.* command
-4. Updates state
-5. **STOPS and waits**
+4. **Updates `step_status` to `"completed"` and advances `current_step`**
+5. Finishes the turn — the stop hook reads state and auto-feeds the next `--execute`
 
 **DO NOT:**
-- ❌ Run multiple /speckit.* commands
+- ❌ Run multiple /speckit.* commands in a single turn
 - ❌ Skip steps
-- ❌ Auto-continue
+- ❌ Forget to update state (the hook depends on it)
 
 ### 📋 FOLLOW idea.md
 
@@ -221,11 +221,7 @@ Display:
 ══════════════════════════════════════════════════════════════
 
 Next step: <next-step>
-
-To continue, run:
-  /speckit-orchestrator --execute
-
 ══════════════════════════════════════════════════════════════
 ```
 
-Then **STOP AND WAIT**.
+The stop hook will detect the updated state and auto-continue to the next step.
