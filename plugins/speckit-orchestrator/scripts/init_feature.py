@@ -7,6 +7,7 @@ Creates:
 
 Usage:
     python init_feature.py <feature-name> <branch-name>
+    python init_feature.py <feature-name> <branch-name> --no-teams
 """
 
 import argparse
@@ -16,10 +17,21 @@ import sys
 from datetime import datetime
 
 
-def create_state(feature_name: str, branch_name: str, base_dir: str) -> dict:
+def create_state(feature_name: str, branch_name: str, base_dir: str,
+                 teams_enabled: bool = True) -> dict:
     """Create initial orchestrator state."""
     now = datetime.utcnow().isoformat() + "Z"
     feature_dir = os.path.join(base_dir, "docs", "features", feature_name)
+
+    step_status = {
+        "specify": "pending",
+        "clarify": "pending",
+        "plan": "pending",
+        "plan-review": "skipped" if not teams_enabled else "pending",
+        "tasks": "pending",
+        "analyze": "pending",
+        "implement": "pending",
+    }
 
     return {
         "feature_name": feature_name,
@@ -27,16 +39,11 @@ def create_state(feature_name: str, branch_name: str, base_dir: str) -> dict:
         "idea_file": os.path.join(feature_dir, "idea.md"),
         "spec_dir": os.path.join(base_dir, "specs", feature_name),
         "current_step": "specify",
-        "step_status": {
-            "specify": "pending",
-            "clarify": "pending",
-            "plan": "pending",
-            "tasks": "pending",
-            "analyze": "pending",
-            "implement": "pending",
-        },
+        "step_status": step_status,
         "started_at": now,
         "last_updated": now,
+        "teams_enabled": teams_enabled,
+        "team_state": None,
     }
 
 
@@ -50,6 +57,14 @@ def main():
         "--base-dir",
         default=os.getcwd(),
         help="Base directory (default: current working directory)",
+    )
+    parser.add_argument(
+        "--teams", dest="teams", action="store_true", default=True,
+        help="Enable agent teams for parallel phases (default)",
+    )
+    parser.add_argument(
+        "--no-teams", dest="teams", action="store_false",
+        help="Disable agent teams, run fully sequential",
     )
 
     args = parser.parse_args()
@@ -67,13 +82,16 @@ def main():
         print("  Create idea.md before running /speckit-orchestrator --execute")
 
     # Create state
-    state = create_state(args.feature, args.branch, args.base_dir)
+    state = create_state(args.feature, args.branch, args.base_dir,
+                         teams_enabled=args.teams)
 
     # Save state
     with open(state_file, "w") as f:
         json.dump(state, f, indent=2)
 
+    teams_label = "enabled" if args.teams else "disabled"
     print(f"✓ Created: {state_file}")
+    print(f"  Agent teams: {teams_label}")
     print(f"\nNext step: /speckit-orchestrator --execute")
 
 

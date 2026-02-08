@@ -5,8 +5,12 @@
 The orchestrator executes the SpecKit pipeline **step by step, with a stop hook providing auto-continuation**:
 
 ```
-specify → clarify → plan → tasks → analyze → implement
+specify → clarify → plan → [plan-review] → tasks → analyze → implement
+                             ^                                  ^
+                        Team phase                         Team phase
 ```
+
+Steps in brackets `[]` use agent teams when enabled. When teams are disabled, `plan-review` is skipped and `implement` runs sequentially.
 
 **Prerequisites:**
 - Feature branch exists
@@ -58,7 +62,29 @@ Technical decisions in idea.md take precedence.
 
 ---
 
-### Step 4: Tasks
+### Step 4: Plan Review (Team Phase)
+
+**Requires:** `teams_enabled: true`
+
+**When skipped:** If `teams_enabled` is false, this step is automatically skipped.
+
+**Procedure:**
+1. Create team: `speckit-<feature>-plan-review`
+2. Spawn specialist reviewers in parallel:
+   - `security-reviewer` → `reviews/security.md`
+   - `performance-reviewer` → `reviews/performance.md`
+   - `conventions-reviewer` → `reviews/conventions.md`
+   - `ui-reviewer` (conditional) → `reviews/ui.md`
+3. Monitor via TaskList until all complete
+4. Consolidate into `reviews/summary.md`
+5. If any reviewer says "REVISE REQUIRED" → pause for user
+6. Teardown team, advance to tasks
+
+**See:** `references/team-workflow-reference.md` for detailed team procedures.
+
+---
+
+### Step 5: Tasks
 
 **Command:** `/speckit.tasks`
 
@@ -72,7 +98,7 @@ No tasks for features outside idea.md.
 
 ---
 
-### Step 5: Analyze
+### Step 6: Analyze
 
 **Command:** `/speckit.analyze`
 
@@ -86,17 +112,24 @@ Flag scope drift as error.
 
 ---
 
-### Step 6: Implement
+### Step 7: Implement (Team Phase when enabled)
 
-**Command:** `/speckit.implement`
+**Command:** `/speckit.implement` (sequential) or team phase (parallel)
 
-**Context to pass:**
+**When teams enabled:**
+1. Run `partition_tasks.py` to group tasks by file ownership
+2. Create team: `speckit-<feature>-implement`
+3. Spawn implementers (max 3) + test writer in parallel
+4. After completion, spawn QA reviewer
+5. Consolidate and teardown
+
+**When teams disabled:**
 ```
 Implementation must match idea.md exactly.
 HALT if scope change is required.
 ```
 
-**Output:** Implemented code
+**Output:** Implemented code + tests
 
 ---
 
@@ -114,17 +147,36 @@ docs/features/<feature>/orchestrator-state.json
   "branch_name": "string",
   "idea_file": "string",
   "spec_dir": "string",
-  "current_step": "specify|clarify|plan|tasks|analyze|implement",
+  "current_step": "specify|clarify|plan|plan-review|tasks|analyze|implement",
   "step_status": {
     "specify": "pending|in_progress|completed|skipped",
     "clarify": "pending|in_progress|completed|skipped",
     "plan": "pending|in_progress|completed|skipped",
+    "plan-review": "pending|in_progress|completed|skipped",
     "tasks": "pending|in_progress|completed|skipped",
     "analyze": "pending|in_progress|completed|skipped",
     "implement": "pending|in_progress|completed|skipped"
   },
   "started_at": "ISO8601",
-  "last_updated": "ISO8601"
+  "last_updated": "ISO8601",
+  "teams_enabled": true,
+  "team_state": null
+}
+```
+
+### Team State (when active)
+```json
+{
+  "team_state": {
+    "active_team": "speckit-<feature>-plan-review",
+    "phase": "plan-review",
+    "teammates": {
+      "security-reviewer": { "status": "in_progress", "output": "reviews/security.md" },
+      "performance-reviewer": { "status": "completed", "output": "reviews/performance.md" }
+    },
+    "started_at": "ISO8601",
+    "timeout_minutes": 15
+  }
 }
 ```
 
@@ -149,39 +201,57 @@ docs/features/<feature>/orchestrator-state.json
 | `/speckit-orchestrator --execute` | Run next pipeline step |
 | `/speckit-orchestrator --status` | Show progress |
 | `/speckit-orchestrator --rollback <step>` | Reset to step |
+| `/speckit-orchestrator:cancel-pipeline` | Pause pipeline |
 
 ### Script Commands
 
 ```bash
-# Initialize state (if doesn't exist)
+# Initialize state
 python orchestrator.py init <feature> <branch>
+python orchestrator.py init <feature> <branch> --no-teams
 
 # Show status
 python orchestrator.py status
 
+# Show team status
+python orchestrator.py team-status
+
 # Rollback
 python orchestrator.py rollback <step>
+
+# Partition tasks for parallel implementation
+python partition_tasks.py specs/<feature>/tasks.md
+
+# Check team availability
+./check_teams.sh
 ```
 
 ---
 
 ## Critical Rules
 
-### ✅ ONE STEP PER EXECUTE (Stop Hook Auto-Continues)
+### ONE STEP PER EXECUTE (Stop Hook Auto-Continues)
 
 Each `--execute` call:
 1. Reads state to find next pending step
 2. Reads idea.md for context
-3. Runs ONE /speckit.* command
+3. Runs ONE /speckit.* command (or manages one team phase)
 4. **Updates `step_status` to `"completed"` and advances `current_step`**
 5. Finishes the turn — the stop hook reads state and auto-feeds the next `--execute`
 
 **DO NOT:**
-- ❌ Run multiple /speckit.* commands in a single turn
-- ❌ Skip steps
-- ❌ Forget to update state (the hook depends on it)
+- Run multiple /speckit.* commands in a single turn
+- Skip steps
+- Forget to update state (the hook depends on it)
 
-### 📋 FOLLOW idea.md
+### TEAM STATE (for team phases)
+
+- Set `team_state` when starting a team phase
+- Update teammate status as they complete
+- Clear `team_state` before marking the step complete
+- The stop hook blocks premature stops while teammates are working
+
+### FOLLOW idea.md
 
 - Read idea.md before each step
 - Pass context about following idea.md
@@ -192,16 +262,16 @@ Each `--execute` call:
 ## Progress Display
 
 ```
-╔════════════════════════════════════════════════════════════════════╗
-║  SpecKit Orchestrator                                               ║
-╠════════════════════════════════════════════════════════════════════╣
-║  Feature: dark-mode-toggle                                          ║
-║  Branch: 042-dark-mode-toggle                                       ║
-║  Source: docs/features/dark-mode-toggle/idea.md                     ║
-╠════════════════════════════════════════════════════════════════════╣
-║  [✓] Specify  →  [✓] Clarify  →  [▶] Plan                          ║
-║  [ ] Tasks    →  [ ] Analyze  →  [ ] Implement                      ║
-╚════════════════════════════════════════════════════════════════════╝
+╔════════════════════════════════════════════════════════════════════════════╗
+║  SpecKit Orchestrator (Teams Enabled)                                      ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║  Feature: dark-mode-toggle                                                 ║
+║  Branch: 042-dark-mode-toggle                                              ║
+║  Source: docs/features/dark-mode-toggle/idea.md                            ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║  [✓] Specify  →  [✓] Clarify  →  [✓] Plan  →  [▶] Plan Review ⚡          ║
+║  [ ] Tasks    →  [ ] Analyze  →  [ ] Implement ⚡                          ║
+╚════════════════════════════════════════════════════════════════════════════╝
 ```
 
 **Symbols:**
@@ -209,6 +279,7 @@ Each `--execute` call:
 - `[−]` Skipped
 - `[▶]` In Progress
 - `[ ]` Pending
+- `⚡` Team step (parallel agents)
 
 ---
 

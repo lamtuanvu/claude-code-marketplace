@@ -1,7 +1,7 @@
 {
   "name": "speckit-orchestrator",
-  "version": "1.0.0",
-  "description": "SpecKit pipeline orchestrator — brainstorm features, execute the specify→clarify→plan→tasks→analyze→implement pipeline, and auto-continue between steps via stop hook.",
+  "version": "2.0.0",
+  "description": "SpecKit pipeline orchestrator — brainstorm features, execute the specify→clarify→plan→plan-review→tasks→analyze→implement pipeline with agent-teams support for parallel specialist reviews and parallel implementation.",
   "author": {
     "name": "lamtuanvu",
     "github": "lamtuanvu"

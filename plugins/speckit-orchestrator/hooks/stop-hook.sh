@@ -4,6 +4,9 @@
 # Intercepts stop signals to auto-continue the pipeline between steps.
 # Only blocks stop when a step was positively completed and a next step exists.
 # Any ambiguity → allow stop (safety-first to prevent infinite loops).
+#
+# Team-aware: when an agent team is active, blocks stop until all teammates
+# finish or the timeout expires.
 
 set -euo pipefail
 
@@ -54,9 +57,61 @@ if [[ "$PAUSED" == "true" ]]; then
 fi
 
 # -------------------------------------------------------------------
-# 6. Define step order and read statuses
+# 6. Check if a team is active → block stop while teammates working
 # -------------------------------------------------------------------
-STEPS=("specify" "clarify" "plan" "tasks" "analyze" "implement")
+TEAM_ACTIVE=$(echo "$STATE" | jq -r '.team_state.active_team // ""')
+if [[ -n "$TEAM_ACTIVE" ]]; then
+  # Check timeout: if elapsed > timeout_minutes, allow stop with warning
+  TEAM_STARTED=$(echo "$STATE" | jq -r '.team_state.started_at // ""')
+  TIMEOUT_MINS=$(echo "$STATE" | jq -r '.team_state.timeout_minutes // 15')
+
+  if [[ -n "$TEAM_STARTED" ]]; then
+    # Calculate elapsed minutes
+    STARTED_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${TEAM_STARTED%%.*}" "+%s" 2>/dev/null || \
+                    date -d "${TEAM_STARTED}" "+%s" 2>/dev/null || echo "0")
+    NOW_EPOCH=$(date "+%s")
+    if [[ "$STARTED_EPOCH" -gt 0 ]]; then
+      ELAPSED_MINS=$(( (NOW_EPOCH - STARTED_EPOCH) / 60 ))
+      if [[ "$ELAPSED_MINS" -ge "$TIMEOUT_MINS" ]]; then
+        # Timeout exceeded → allow stop with warning
+        echo "Warning: SpecKit team timeout exceeded (${ELAPSED_MINS}m >= ${TIMEOUT_MINS}m). Allowing stop." >&2
+        exit 0
+      fi
+    fi
+  fi
+
+  # Check incomplete teammates
+  INCOMPLETE=$(echo "$STATE" | jq '[.team_state.teammates // {} | to_entries[]
+    | select(.value.status != "completed" and .value.status != "failed")] | length')
+
+  if [[ "$INCOMPLETE" -gt 0 ]]; then
+    # Block stop - teammates still working
+    PHASE=$(echo "$STATE" | jq -r '.team_state.phase // "unknown"')
+    jq -n \
+      --arg reason "/speckit-orchestrator --execute" \
+      --arg msg "SpecKit Team [${PHASE}]: ${INCOMPLETE} teammates still working on ${FEATURE}" \
+      '{
+        "decision": "block",
+        "reason": $reason,
+        "systemMessage": $msg
+      }'
+    exit 0
+  fi
+
+  # All teammates done → fall through to normal step logic
+fi
+
+# -------------------------------------------------------------------
+# 7. Define step order and read statuses
+#    Conditionally include plan-review based on teams_enabled
+# -------------------------------------------------------------------
+TEAMS_ENABLED=$(echo "$STATE" | jq -r '.teams_enabled // false')
+
+if [[ "$TEAMS_ENABLED" == "true" ]]; then
+  STEPS=("specify" "clarify" "plan" "plan-review" "tasks" "analyze" "implement")
+else
+  STEPS=("specify" "clarify" "plan" "tasks" "analyze" "implement")
+fi
 TOTAL_STEPS=${#STEPS[@]}
 
 # Check for any failed step → allow stop
@@ -84,14 +139,14 @@ for i in "${!STEPS[@]}"; do
 done
 
 # -------------------------------------------------------------------
-# 7. All steps complete → allow stop (pipeline done)
+# 8. All steps complete → allow stop (pipeline done)
 # -------------------------------------------------------------------
 if [[ -z "$NEXT_STEP" ]]; then
   exit 0
 fi
 
 # -------------------------------------------------------------------
-# 8. Check transcript for failure/completion signals → allow stop
+# 9. Check transcript for failure/completion signals → allow stop
 # -------------------------------------------------------------------
 TRANSCRIPT_PATH=$(echo "$HOOK_INPUT" | jq -r '.transcript_path // ""')
 
@@ -116,8 +171,8 @@ if [[ -n "$TRANSCRIPT_PATH" ]] && [[ -f "$TRANSCRIPT_PATH" ]]; then
 fi
 
 # -------------------------------------------------------------------
-# 9. If current step is still in_progress (not yet completed) → allow stop
-#    This prevents infinite loops when a step is ambiguous/stuck.
+# 10. If current step is still in_progress (not yet completed) → allow stop
+#     This prevents infinite loops when a step is ambiguous/stuck.
 # -------------------------------------------------------------------
 CURRENT_STEP=$(echo "$STATE" | jq -r '.current_step // ""')
 CURRENT_STATUS=$(echo "$STATE" | jq -r --arg s "$CURRENT_STEP" '.step_status[$s] // "pending"')
@@ -127,13 +182,19 @@ if [[ "$CURRENT_STATUS" == "in_progress" ]]; then
 fi
 
 # -------------------------------------------------------------------
-# 10. We have a completed current step and a next step → block stop
+# 11. We have a completed current step and a next step → block stop
 # -------------------------------------------------------------------
 STEP_NUMBER=$((COMPLETED_COUNT + 1))
 
+# Add team indicator for team steps
+STEP_LABEL="$NEXT_STEP"
+if [[ "$TEAMS_ENABLED" == "true" ]] && { [[ "$NEXT_STEP" == "plan-review" ]] || [[ "$NEXT_STEP" == "implement" ]]; }; then
+  STEP_LABEL="${NEXT_STEP} ⚡"
+fi
+
 jq -n \
   --arg reason "/speckit-orchestrator --execute" \
-  --arg msg "SpecKit Pipeline [${STEP_NUMBER}/${TOTAL_STEPS}] | Feature: ${FEATURE} | Next: ${NEXT_STEP}" \
+  --arg msg "SpecKit Pipeline [${STEP_NUMBER}/${TOTAL_STEPS}] | Feature: ${FEATURE} | Next: ${STEP_LABEL}" \
   '{
     "decision": "block",
     "reason": $reason,
