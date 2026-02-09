@@ -198,9 +198,9 @@ docs/features/<feature>/orchestrator-state.json
 
 | Command | Description |
 |---------|-------------|
-| `/speckit-orchestrator --execute` | Run next pipeline step |
-| `/speckit-orchestrator --status` | Show progress |
-| `/speckit-orchestrator --rollback <step>` | Reset to step |
+| `/speckit-orchestrator:execute` | Run next pipeline step |
+| `/speckit-orchestrator:status` | Show progress |
+| `/speckit-orchestrator:rollback <step>` | Reset to step |
 | `/speckit-orchestrator:cancel-pipeline` | Pause pipeline |
 
 ### Script Commands
@@ -232,12 +232,12 @@ python partition_tasks.py specs/<feature>/tasks.md
 
 ### ONE STEP PER EXECUTE (Stop Hook Auto-Continues)
 
-Each `--execute` call:
+Each `/speckit-orchestrator:execute` call:
 1. Reads state to find next pending step
 2. Reads idea.md for context
 3. Runs ONE /speckit.* command (or manages one team phase)
 4. **Updates `step_status` to `"completed"` and advances `current_step`**
-5. Finishes the turn — the stop hook reads state and auto-feeds the next `--execute`
+5. Finishes the turn — the stop hook reads state and auto-feeds the next `/speckit-orchestrator:execute`
 
 **DO NOT:**
 - Run multiple /speckit.* commands in a single turn

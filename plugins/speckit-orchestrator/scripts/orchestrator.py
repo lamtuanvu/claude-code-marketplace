@@ -310,7 +310,7 @@ def cmd_init(args):
     # Check idea.md exists
     if not os.path.exists(state.idea_file):
         print(f"⚠ Warning: idea.md not found at {state.idea_file}")
-        print("  Create idea.md before running --execute")
+        print("  Create idea.md before running /speckit-orchestrator:execute")
 
     # Save state
     state_file = state.get_state_file(base_dir)
@@ -320,7 +320,7 @@ def cmd_init(args):
     teams_label = "enabled" if teams_enabled else "disabled"
     print(f"✓ Initialized: {state_file}")
     print(f"  Agent teams: {teams_label}")
-    print(f"\nTo start pipeline: /speckit-orchestrator --execute")
+    print(f"\nTo start pipeline: /speckit-orchestrator:execute")
 
     print_progress(state)
 
@@ -418,7 +418,7 @@ def cmd_status(args):
     if next_step:
         step_type = " (team phase)" if state.is_team_step(next_step) else ""
         print(f"\nNext step: {next_step.value}{step_type}")
-        print(f"Run: /speckit-orchestrator --execute")
+        print(f"Run: /speckit-orchestrator:execute")
     else:
         print("\n✅ All steps complete!")
 
@@ -474,7 +474,7 @@ def cmd_cancel(args):
     print(f"⏸ Pipeline paused for feature: {feature}")
     if next_step:
         print(f"  Paused before step: {next_step.value}")
-    print(f"\nTo resume: /speckit-orchestrator --execute")
+    print(f"\nTo resume: /speckit-orchestrator:execute")
     print_progress(state)
 
 

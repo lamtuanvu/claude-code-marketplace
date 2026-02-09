@@ -88,7 +88,7 @@ if [[ -n "$TEAM_ACTIVE" ]]; then
     # Block stop - teammates still working
     PHASE=$(echo "$STATE" | jq -r '.team_state.phase // "unknown"')
     jq -n \
-      --arg reason "/speckit-orchestrator --execute" \
+      --arg reason "/speckit-orchestrator:execute" \
       --arg msg "SpecKit Team [${PHASE}]: ${INCOMPLETE} teammates still working on ${FEATURE}" \
       '{
         "decision": "block",
@@ -193,7 +193,7 @@ if [[ "$TEAMS_ENABLED" == "true" ]] && { [[ "$NEXT_STEP" == "plan-review" ]] || 
 fi
 
 jq -n \
-  --arg reason "/speckit-orchestrator --execute" \
+  --arg reason "/speckit-orchestrator:execute" \
   --arg msg "SpecKit Pipeline [${STEP_NUMBER}/${TOTAL_STEPS}] | Feature: ${FEATURE} | Next: ${STEP_LABEL}" \
   '{
     "decision": "block",

@@ -15,4 +15,4 @@ To pause the SpecKit orchestrator pipeline (so the stop hook stops auto-continui
 
 2. Report the result to the user.
 
-3. To resume later, the user can run `/speckit-orchestrator --execute` which clears the pause flag.
+3. To resume later, the user can run `/speckit-orchestrator:execute` which clears the pause flag.

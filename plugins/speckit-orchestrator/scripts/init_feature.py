@@ -79,7 +79,7 @@ def main():
     idea_file = os.path.join(feature_dir, "idea.md")
     if not os.path.exists(idea_file):
         print(f"⚠ Warning: idea.md not found at {idea_file}")
-        print("  Create idea.md before running /speckit-orchestrator --execute")
+        print("  Create idea.md before running /speckit-orchestrator:execute")
 
     # Create state
     state = create_state(args.feature, args.branch, args.base_dir,
@@ -92,7 +92,7 @@ def main():
     teams_label = "enabled" if args.teams else "disabled"
     print(f"✓ Created: {state_file}")
     print(f"  Agent teams: {teams_label}")
-    print(f"\nNext step: /speckit-orchestrator --execute")
+    print(f"\nNext step: /speckit-orchestrator:execute")
 
 
 if __name__ == "__main__":
