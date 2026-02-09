@@ -14,13 +14,13 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def create_state(feature_name: str, branch_name: str, base_dir: str,
                  teams_enabled: bool = True) -> dict:
     """Create initial orchestrator state."""
-    now = datetime.utcnow().isoformat() + "Z"
+    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     feature_dir = os.path.join(base_dir, "docs", "features", feature_name)
 
     step_status = {

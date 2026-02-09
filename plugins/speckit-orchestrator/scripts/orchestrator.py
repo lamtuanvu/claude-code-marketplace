@@ -26,7 +26,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass, asdict
 from enum import Enum
 from typing import Optional, Tuple
@@ -62,12 +62,13 @@ class OrchestratorState:
     last_updated: str
     teams_enabled: bool = True
     team_state: Optional[dict] = None
+    pipeline_paused: bool = False
 
     @classmethod
     def new(cls, feature_name: str, branch_name: str, base_dir: str,
             teams_enabled: bool = True) -> 'OrchestratorState':
         """Create new state."""
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         feature_dir = os.path.join(base_dir, "docs", "features", feature_name)
 
         step_status = {
@@ -116,7 +117,7 @@ class OrchestratorState:
 
     def save(self, state_file: str) -> None:
         """Save state to file."""
-        self.last_updated = datetime.utcnow().isoformat() + "Z"
+        self.last_updated = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         os.makedirs(os.path.dirname(state_file), exist_ok=True)
         with open(state_file, 'w') as f:
             json.dump(asdict(self), f, indent=2)
@@ -142,7 +143,7 @@ class OrchestratorState:
             "active_team": team_name,
             "phase": phase,
             "teammates": teammates,
-            "started_at": datetime.utcnow().isoformat() + "Z",
+            "started_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "timeout_minutes": timeout_minutes,
         }
 
@@ -272,7 +273,7 @@ def _clear_paused_flag(state_file: str) -> None:
             data = json.load(f)
         if data.get('pipeline_paused'):
             data['pipeline_paused'] = False
-            data['last_updated'] = datetime.utcnow().isoformat() + "Z"
+            data['last_updated'] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             with open(state_file, 'w') as f:
                 json.dump(data, f, indent=2)
     except (json.JSONDecodeError, FileNotFoundError):
@@ -285,7 +286,7 @@ def _set_paused_flag(state_file: str) -> None:
         with open(state_file, 'r') as f:
             data = json.load(f)
         data['pipeline_paused'] = True
-        data['last_updated'] = datetime.utcnow().isoformat() + "Z"
+        data['last_updated'] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         with open(state_file, 'w') as f:
             json.dump(data, f, indent=2)
     except (json.JSONDecodeError, FileNotFoundError) as e:
