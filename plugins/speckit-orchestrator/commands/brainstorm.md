@@ -38,7 +38,7 @@ Keep this brief — the analysts will do the deep exploration. You just need eno
 
 Extract feature info:
 - Feature name (kebab-case): e.g., `dark-mode-toggle`
-- Ticket number (if provided): e.g., `042`
+- Sequence number: auto-determined (see Step 5.1)
 
 ### Step 2: Detect Agent Teams Availability
 
@@ -280,11 +280,22 @@ Iterate until the user approves.
 
 After the user approves the idea.md draft:
 
-**Step 5.1: Create git branch**
+**Step 5.1: Determine sequence number and create git branch**
+
+Auto-determine the next sequence number by scanning existing branches:
 ```bash
-git checkout -b <branch-name>
+git branch -a | grep -oE '[0-9]{3}-' | sort -rn | head -1
 ```
-Branch name: `<ticket>-<feature-name>` or just `<feature-name>`
+- Extract the highest `NNN` prefix from all branches matching `NNN-*`
+- If none found, start at `001`
+- Otherwise, increment by 1 and zero-pad to 3 digits
+- Example: if `002-plugin-search` exists → next is `003`
+
+Create the branch:
+```bash
+git checkout -b <NNN>-<feature-name>
+```
+Branch name always follows the pattern `NNN-feature-name` (e.g., `001-dark-mode-toggle`, `014-plugin-rating-reviews`). This convention is required by the stop hook for feature name extraction.
 
 **Step 5.2: Write `docs/features/<feature>/idea.md`**
 - Create the directory: `mkdir -p docs/features/<feature-name>`
@@ -297,7 +308,7 @@ Write the state file to `docs/features/<feature-name>/orchestrator-state.json`:
 ```json
 {
   "feature_name": "<feature-name>",
-  "branch_name": "<branch-name>",
+  "branch_name": "<NNN>-<feature-name>",
   "idea_file": "docs/features/<feature-name>/idea.md",
   "spec_dir": "specs/<feature-name>",
   "current_step": "specify",
@@ -340,7 +351,7 @@ BRAINSTORMING COMPLETE
    [✓] Devil's Advocate
 
  Artifacts:
-   1. Created git branch: <branch-name>
+   1. Created git branch: <NNN>-<feature-name>
    2. Created idea.md: docs/features/<feature-name>/idea.md
    3. Created orchestrator-state.json (7 steps, starting at specify)
    4. Verified state file

@@ -5,13 +5,52 @@
 # Only blocks stop when a step was positively completed and a next step exists.
 # Any ambiguity → allow stop (safety-first to prevent infinite loops).
 #
-# Team-aware: when an agent team is active, blocks stop until all teammates
-# finish or the timeout expires.
+# Team-aware: skips teammate sessions entirely and allows the lead to stop
+# during team phases so it can receive teammate messages naturally.
 
 set -euo pipefail
 
 # Read hook input from stdin
 HOOK_INPUT=$(cat)
+
+# -------------------------------------------------------------------
+# 0. Skip for teammate / spawned-agent sessions
+#    Each teammate is a full Claude Code session that loads the same
+#    plugins and hooks. Only the lead session should auto-continue
+#    the pipeline. Teammates communicate via the messaging system.
+# -------------------------------------------------------------------
+
+# Check environment variables that Claude Code sets for teammates
+if [[ -n "${CLAUDE_AGENT_TEAM_NAME:-}" ]] || \
+   [[ -n "${CLAUDE_TEAMMATE_NAME:-}" ]]; then
+  exit 0
+fi
+
+# Check hook input for teammate/team metadata (present in TeammateIdle
+# and TaskCompleted; may also appear in Stop for teammate sessions)
+TEAMMATE_NAME=$(echo "$HOOK_INPUT" | jq -r '.teammate_name // ""' 2>/dev/null)
+TEAM_NAME_INPUT=$(echo "$HOOK_INPUT" | jq -r '.team_name // ""' 2>/dev/null)
+if [[ -n "$TEAMMATE_NAME" ]] || [[ -n "$TEAM_NAME_INPUT" ]]; then
+  exit 0
+fi
+
+# Check if any active team config lists this session as a teammate (not lead)
+SESSION_ID=$(echo "$HOOK_INPUT" | jq -r '.session_id // ""' 2>/dev/null)
+if [[ -n "$SESSION_ID" ]]; then
+  TEAMS_DIR="$HOME/.claude/teams"
+  if [[ -d "$TEAMS_DIR" ]]; then
+    for CONFIG in "$TEAMS_DIR"/*/config.json; do
+      [[ -f "$CONFIG" ]] || continue
+      # Check if session_id matches any teammate's agentId
+      IS_TEAMMATE=$(jq -r --arg sid "$SESSION_ID" '
+        .members // [] | map(select(.agentId == $sid)) | length
+      ' "$CONFIG" 2>/dev/null || echo "0")
+      if [[ "$IS_TEAMMATE" -gt 0 ]]; then
+        exit 0
+      fi
+    done
+  fi
+fi
 
 # -------------------------------------------------------------------
 # 1. Determine current branch; skip non-feature branches
@@ -85,16 +124,9 @@ if [[ -n "$TEAM_ACTIVE" ]]; then
     | select(.value.status != "completed" and .value.status != "failed")] | length')
 
   if [[ "$INCOMPLETE" -gt 0 ]]; then
-    # Block stop - teammates still working
-    PHASE=$(echo "$STATE" | jq -r '.team_state.phase // "unknown"')
-    jq -n \
-      --arg reason "/speckit-orchestrator:execute" \
-      --arg msg "SpecKit Team [${PHASE}]: ${INCOMPLETE} teammates still working on ${FEATURE}" \
-      '{
-        "decision": "block",
-        "reason": $reason,
-        "systemMessage": $msg
-      }'
+    # Team phase active — allow the lead to stop and wait for teammate
+    # messages. The agent-teams messaging system handles continuation;
+    # blocking here causes disruptive re-entry during team coordination.
     exit 0
   fi
 
