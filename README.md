@@ -27,7 +27,7 @@ Skills for Claude Code - structured feature development and plugin creation tool
 ### 3. Use Skills
 ```
 /speckit-brainstorm Add dark mode toggle
-/speckit-orchestrator --execute
+/speckit-orchestrator:execute
 /plugin-creator
 ```
 
@@ -68,10 +68,16 @@ brainstorm → specify → clarify → plan → tasks → analyze → implement
    - Defines requirements
    - Creates `idea.md` and `orchestrator-state.json`
 
-2. **Execute the pipeline**: `/speckit-orchestrator --execute`
+2. **Execute the pipeline**: `/speckit-orchestrator:execute`
    - Runs one step at a time
    - Follows `idea.md` as source of truth
-   - Progress: specify → clarify → plan → tasks → analyze → implement
+   - Progress: specify → clarify → plan → [plan-review] → tasks → analyze → implement
+
+3. **Check progress**: `/speckit-orchestrator:status`
+
+4. **Reset to a step**: `/speckit-orchestrator:rollback <step>`
+
+5. **Pause pipeline**: `/speckit-orchestrator:cancel-pipeline`
 
 ## Skill Structure
 
