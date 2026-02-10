@@ -13,7 +13,7 @@
   "plugins": [
     {
       "name": "speckit-orchestrator",
-      "version": "1.0.0",
+      "version": "2.1.0",
       "description": "SpecKit pipeline orchestrator — brainstorm, execute specify→clarify→plan→tasks→analyze→implement, auto-continue via stop hook",
       "source": "./plugins/speckit-orchestrator",
       "keywords": ["speckit", "workflow", "automation", "pipeline", "development", "brainstorm"]

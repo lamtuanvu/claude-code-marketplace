@@ -72,15 +72,8 @@ Explicitly excluded from this feature:
 
 ## Affected Components
 
-### Backend
-
-- `packages/backend/src/path/to/file.rs`
-- `packages/backend/src/path/to/other.rs`
-
-### Frontend
-
-- `packages/node-ui/src/pages/PageName.tsx`
-- `packages/node-ui/src/components/ComponentName.tsx`
+- `path/to/affected/file`
+- `path/to/other/file`
 
 ## Dependencies
 

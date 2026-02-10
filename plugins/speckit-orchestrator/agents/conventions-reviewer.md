@@ -48,7 +48,7 @@ Analyze the plan against each category. For each finding, rate importance as **M
 - Is error logging consistent with existing patterns?
 
 ### Code Style
-- Are TypeScript/language-specific patterns followed (generics, type guards, etc.)?
+- Are language-specific patterns followed (generics, type guards, protocols, etc.)?
 - Is the proposed API surface consistent with existing APIs?
 - Are return types and signatures consistent?
 

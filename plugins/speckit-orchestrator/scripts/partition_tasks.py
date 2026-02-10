@@ -15,7 +15,7 @@ Output (JSON to stdout):
         {
           "id": 1,
           "tasks": ["Task 1 description", "Task 3 description"],
-          "files": ["src/auth.ts", "src/middleware.ts"]
+          "files": ["src/module_a.py", "src/module_b.py"]
         },
         ...
       ],
@@ -85,9 +85,9 @@ def extract_files(text: str) -> list:
     """Extract file paths from task body text.
 
     Looks for patterns like:
-    - `src/auth.ts`
-    - src/auth.ts (bare paths with extensions)
-    - **File:** src/auth.ts
+    - `src/module_a.py`
+    - src/module_a.py (bare paths with extensions)
+    - **File:** src/module_a.py
     """
     files = set()
 
