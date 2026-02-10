@@ -256,9 +256,11 @@ Read all reports and combine them:
 - [ ] <criterion 2>
 ```
 
-### Step 4: Present to User for Approval
+### Step 4: Present Plan and Guide User to Continue
 
-Present the synthesized `idea.md` draft to the user using `AskUserQuestion`:
+Present the synthesized `idea.md` draft to the user as plain text output (do NOT use `AskUserQuestion` here — that would trigger immediate implementation while still in plan mode).
+
+Display the full draft followed by the transition guide:
 
 ```
 Here's the synthesized idea.md based on analysis from 4 specialist analysts
@@ -266,15 +268,26 @@ Here's the synthesized idea.md based on analysis from 4 specialist analysts
 
 <display the full idea.md draft>
 
-Does this look good, or would you like changes?
+══════════════════════════════════════════════════════════════
+📋 NEXT STEPS — To approve and start the pipeline
+══════════════════════════════════════════════════════════════
+
+  1. Press [Esc] to exit this query
+  2. Switch to Edit mode (if not already in edit mode)
+  3. Ask: "Write the approved plan to idea.md and create
+     the feature artifacts"
+
+  — OR if you want changes, ask me to revise the draft
+    before writing it.
+
+This will create idea.md, orchestrator-state.json,
+and the git branch, then continue to the SpecKit pipeline.
+══════════════════════════════════════════════════════════════
 ```
 
-**Options:**
-- **Approve** → proceed to Step 5
-- **Request changes** → revise the draft based on feedback, present again
-- **Reject** → do not create any artifacts
+**Do NOT use `AskUserQuestion` for approval here.** The agent cannot programmatically exit plan mode, so if the user approves via `AskUserQuestion`, the agent will attempt to write files while still in plan mode and fail. The user must manually press Esc, switch to edit mode, and then instruct the agent to proceed.
 
-Iterate until the user approves.
+**STOP here. Do not proceed to Step 5 until the user returns in edit mode and explicitly asks to write the artifacts.**
 
 ### Step 5: Create Feature Artifacts (ONLY After Approval)
 
@@ -397,9 +410,10 @@ The SpecKit pipeline handles everything after `idea.md` is created.
 
 **Never write idea.md without user approval.**
 
-- Present the synthesized draft via `AskUserQuestion`
-- Iterate if user has feedback
-- Only write `idea.md` after explicit approval
+- Present the synthesized draft as plain text output (NOT via `AskUserQuestion`)
+- Display the transition guide telling the user to press Esc, switch to edit mode, then ask to write
+- The user returns in edit mode and explicitly asks to write — that is the approval
+- If the user asks for changes first, revise the draft and present again with the guide
 
 ### AUTO-CONTINUE TO PIPELINE
 
@@ -411,6 +425,40 @@ After artifacts are created:
 ### CLEAN UP (Agent Teams Path Only)
 
 **Always shut down teammates and delete the team** before creating artifacts. The brainstorm team is temporary — it exists only for the analysis phase. This does not apply to the subagent fallback path (subagents clean up automatically).
+
+## Plan Mode Exit Guide
+
+**Known limitation:** Claude Code agents can enter plan mode but cannot programmatically exit it. The `ExitPlanMode` tool signals readiness for approval, but the agent remains in plan mode until the user manually exits. If the user approves via `AskUserQuestion` while still in plan mode, the agent immediately attempts implementation but cannot write files — causing failure.
+
+**Solution:** Never use `AskUserQuestion` for the final approval. Instead, present the plan as plain text with the transition guide, then STOP. The user manually exits plan mode and returns in edit mode to instruct the agent to write files.
+
+**If the agent gets stuck in plan mode at any point**, it MUST display this guide:
+
+```
+══════════════════════════════════════════════════════════════
+⚠️  PLAN MODE — Manual Exit Required
+══════════════════════════════════════════════════════════════
+
+The plan is complete but I cannot exit plan mode
+automatically. Please follow these steps:
+
+  1. Press [Esc] to exit this query
+  2. Switch to Edit mode (press Tab until you see "Edit"
+     or use the mode selector)
+  3. Then ask me: "Write the approved plan to idea.md
+     and continue with artifact creation"
+
+I'll then create the feature artifacts and start the
+SpecKit pipeline.
+══════════════════════════════════════════════════════════════
+```
+
+**When to show this guide:**
+- At the end of Step 4 (always — this is the primary trigger)
+- Any time the agent detects it is stuck in plan mode and needs to write files
+- If `ExitPlanMode` fails or the agent cannot proceed to file writes
+
+**The agent MUST always display this guide at the end of the plan presentation, regardless of whether it is in plan mode or not.** This ensures the user always knows how to proceed.
 
 ## Resources
 
