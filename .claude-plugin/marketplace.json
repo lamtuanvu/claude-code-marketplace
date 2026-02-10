@@ -27,6 +27,16 @@
         "repo": "lamtuanvu/video-to-structured-metadata"
       },
       "keywords": ["video", "ai-video-editing", "metadata", "ffmpeg", "mcp", "scene-detection", "transcription"]
+    },
+    {
+      "name": "capcut-api",
+      "version": "1.12.3",
+      "description": "CapCut/JianYing video editing API - create video drafts with video, audio, images, text, subtitles, effects, stickers, and keyframe animations via MCP tools",
+      "source": {
+        "source": "github",
+        "repo": "lamtuanvu/VectCutAPI"
+      },
+      "keywords": ["capcut", "jianying", "video-editing", "mcp", "video"]
     }
   ],
   "categories": [
